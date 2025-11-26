@@ -1,4 +1,105 @@
-# Miscellaneous
+# ============================================
+#   FLUTTER / DART
+# ============================================
+
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+coverage/
+*.lock
+**/doc/api/
+**/ios/Flutter/.last_build_id
+
+# Generated plugin registrant
+lib/generated_plugin_registrant.dart
+
+
+# ============================================
+#   IDE / EDITOR FILES
+# ============================================
+
+# IntelliJ / Android Studio
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# VS Code (uncomment if you *don’t* want to sync workspace settings)
+# .vscode/
+
+
+# ============================================
+#   ANDROID
+# ============================================
+
+# Gradle files
+android/.gradle/
+android/build/
+
+# SDK paths (NEVER commit this file)
+android/local.properties
+
+# App output folders
+android/app/debug/
+android/app/profile/
+android/app/release/
+
+# Keystore files (manually add your own path if required)
+*.jks
+*.keystore
+
+
+# ============================================
+#   iOS / MACOS
+# (Safe even if you're on Windows — prevents conflicts)
+# ============================================
+
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Generated.xcconfig
+ios/Runner/GeneratedPluginRegistrant.*
+ios/Runner.xcworkspace/
+ios/Runner/Runner.entitlements
+
+macos/Flutter/Flutter-Debug.xcconfig
+macos/Flutter/Flutter-Release.xcconfig
+macos/Flutter/Flutter-Profile.xcconfig
+macos/Flutter/GeneratedPluginRegistrant.swift
+macos/Pods/
+macos/.symlinks/
+macos/Runner.xcworkspace/
+
+
+# ============================================
+#   WINDOWS / LINUX / WEB
+# ============================================
+
+# Windows build files
+windows/runner/Debug/
+windows/runner/Release/
+windows/runner/Runner.exe
+
+# Linux build folders
+linux/flutter/ephemeral/
+linux/Debug/
+linux/Profile/
+linux/Release/
+
+# Web build folder
+web/.dart_tool/
+web/build/
+
+
+# ============================================
+#   MISC / TEMP FILES
+# ============================================
+
 *.class
 *.log
 *.pyc
@@ -12,34 +113,10 @@
 .swiftpm/
 migrate_working_dir/
 
-# IntelliJ related
-*.iml
-*.ipr
-*.iws
-.idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
+# ============================================
+#   SYMBOLICATION FILES (Dart/Flutter)
+# ============================================
 
-# Flutter/Dart/Pub related
-**/doc/api/
-**/ios/Flutter/.last_build_id
-.dart_tool/
-.flutter-plugins-dependencies
-.pub-cache/
-.pub/
-/build/
-/coverage/
-
-# Symbolication related
 app.*.symbols
-
-# Obfuscation related
 app.*.map.json
-
-# Android Studio will place build artifacts here
-/android/app/debug
-/android/app/profile
-/android/app/release
