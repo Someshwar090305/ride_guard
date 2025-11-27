@@ -1,27 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
-import 'package:uuid/uuid.dart';
 import 'package:ride_guard/core/constants/app_colors.dart';
 import 'package:ride_guard/core/constants/app_strings.dart';
 import 'package:ride_guard/data/models/bike_profile.dart';
 import 'package:ride_guard/data/services/storage_service.dart';
 
-class BikeSetupScreen extends StatefulWidget {
-  const BikeSetupScreen({super.key});
+class EditBikeProfileScreen extends StatefulWidget {
+  final BikeProfile bikeProfile;
+
+  const EditBikeProfileScreen({
+    super.key,
+    required this.bikeProfile,
+  });
 
   @override
-  State<BikeSetupScreen> createState() => _BikeSetupScreenState();
+  State<EditBikeProfileScreen> createState() => _EditBikeProfileScreenState();
 }
 
-class _BikeSetupScreenState extends State<BikeSetupScreen> {
+class _EditBikeProfileScreenState extends State<EditBikeProfileScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _bikeModelController = TextEditingController();
-  final _odometerController = TextEditingController();
-  final _uuid = const Uuid();
+  late TextEditingController _bikeModelController;
+  late TextEditingController _odometerController;
   
-  int _selectedYear = DateTime.now().year;
+  late int _selectedYear;
   DateTime? _lastServiceDate;
   bool _isSaving = false;
+
+  @override
+  void initState() {
+    super.initState();
+    
+    // Initialize with existing data
+    _bikeModelController = TextEditingController(text: widget.bikeProfile.model);
+    _odometerController = TextEditingController(
+      text: widget.bikeProfile.currentOdometer.toStringAsFixed(0),
+    );
+    _selectedYear = widget.bikeProfile.yearOfPurchase;
+    _lastServiceDate = widget.bikeProfile.lastServiceDate;
+  }
 
   @override
   void dispose() {
@@ -33,7 +49,7 @@ class _BikeSetupScreenState extends State<BikeSetupScreen> {
   void _selectDate() async {
     final picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now().subtract(const Duration(days: 30)),
+      initialDate: _lastServiceDate ?? DateTime.now().subtract(const Duration(days: 30)),
       firstDate: DateTime(2000),
       lastDate: DateTime.now(),
     );
@@ -45,44 +61,38 @@ class _BikeSetupScreenState extends State<BikeSetupScreen> {
     }
   }
 
-  Future<void> _saveAndContinue() async {
+  Future<void> _saveChanges() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isSaving = true;
       });
 
-      // Create bike profile
-      final bikeProfile = BikeProfile(
-        id: _uuid.v4(),
+      // Create updated bike profile
+      final updatedProfile = widget.bikeProfile.copyWith(
         model: _bikeModelController.text.trim(),
         yearOfPurchase: _selectedYear,
         lastServiceDate: _lastServiceDate,
         currentOdometer: double.parse(_odometerController.text),
-        createdAt: DateTime.now(),
       );
 
       // Save to storage
-      final saved = await StorageService.saveBikeProfile(bikeProfile);
+      final saved = await StorageService.updateBikeProfile(updatedProfile);
 
       setState(() {
         _isSaving = false;
       });
 
-      if (saved) {
-        // Navigate to dashboard
-        if (mounted) {
-          Navigator.of(context).pushReplacementNamed('/dashboard');
-        }
-      } else {
+      if (saved && mounted) {
+        // Return true to indicate success
+        Navigator.of(context).pop(true);
+      } else if (mounted) {
         // Show error
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Failed to save bike details. Please try again.'),
-              backgroundColor: AppColors.error,
-            ),
-          );
-        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update bike profile. Please try again.'),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     }
   }
@@ -91,8 +101,29 @@ class _BikeSetupScreenState extends State<BikeSetupScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.bikeSetupTitle),
-        automaticallyImplyLeading: false,
+        title: const Text('Edit Bike Profile'),
+        actions: [
+          if (_isSaving)
+            const Center(
+              child: Padding(
+                padding: EdgeInsets.all(16.0),
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ),
+            )
+          else
+            IconButton(
+              icon: const Icon(Icons.check),
+              onPressed: _saveChanges,
+              tooltip: 'Save Changes',
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(24.0),
@@ -105,23 +136,23 @@ class _BikeSetupScreenState extends State<BikeSetupScreen> {
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: AppColors.primaryLight.withOpacity(0.1),
+                  color: AppColors.info.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: AppColors.primaryLight.withOpacity(0.3),
+                    color: AppColors.info.withOpacity(0.3),
                   ),
                 ),
                 child: Row(
                   children: [
                     const Icon(
                       Icons.info_outline,
-                      color: AppColors.primary,
+                      color: AppColors.info,
                       size: 24,
                     ),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Enter your bike details to personalize alerts and maintenance tracking',
+                        'Update your bike information to keep track of maintenance and alerts',
                         style: Theme.of(context).textTheme.bodyMedium,
                       ),
                     ),
@@ -199,16 +230,28 @@ class _BikeSetupScreenState extends State<BikeSetupScreen> {
                     children: [
                       const Icon(Icons.event, color: AppColors.textSecondary),
                       const SizedBox(width: 12),
-                      Text(
-                        _lastServiceDate != null
-                            ? DateFormat('MMM dd, yyyy').format(_lastServiceDate!)
-                            : 'Select date',
-                        style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                          color: _lastServiceDate != null
-                              ? AppColors.textPrimary
-                              : AppColors.textSecondary,
+                      Expanded(
+                        child: Text(
+                          _lastServiceDate != null
+                              ? DateFormat('MMM dd, yyyy').format(_lastServiceDate!)
+                              : 'Select date',
+                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: _lastServiceDate != null
+                                ? AppColors.textPrimary
+                                : AppColors.textSecondary,
+                          ),
                         ),
                       ),
+                      if (_lastServiceDate != null)
+                        IconButton(
+                          icon: const Icon(Icons.clear, size: 20),
+                          onPressed: () {
+                            setState(() {
+                              _lastServiceDate = null;
+                            });
+                          },
+                          tooltip: 'Clear date',
+                        ),
                     ],
                   ),
                 ),
@@ -245,7 +288,7 @@ class _BikeSetupScreenState extends State<BikeSetupScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _isSaving ? null : _saveAndContinue,
+                  onPressed: _isSaving ? null : _saveChanges,
                   style: ElevatedButton.styleFrom(
                     padding: const EdgeInsets.symmetric(vertical: 16),
                   ),
@@ -258,7 +301,17 @@ class _BikeSetupScreenState extends State<BikeSetupScreen> {
                             valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
                           ),
                         )
-                      : const Text(AppStrings.saveAndContinue),
+                      : const Text('Save Changes'),
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              // Cancel Button
+              SizedBox(
+                width: double.infinity,
+                child: TextButton(
+                  onPressed: _isSaving ? null : () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel'),
                 ),
               ),
             ],

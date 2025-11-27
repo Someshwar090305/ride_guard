@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:ride_guard/core/constants/app_colors.dart';
 import 'package:ride_guard/core/constants/app_strings.dart';
 import 'package:ride_guard/data/models/anomaly_alert.dart';
+import 'package:ride_guard/data/models/bike_profile.dart';
 import 'package:ride_guard/data/models/health_status.dart';
 import 'package:ride_guard/data/services/mock_data_service.dart';
+import 'package:ride_guard/data/services/storage_service.dart';
+import 'package:ride_guard/features/settings/screens/settings_screen.dart';
 import '../widgets/health_status_card.dart';
 import '../widgets/quick_stats_card.dart';
 import '../widgets/recent_alerts_widget.dart';
@@ -18,19 +21,32 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   late List<AnomalyAlert> _alerts;
   late HealthStatus _healthStatus;
+  BikeProfile? _bikeProfile;
   int _currentIndex = 0;
+  bool _isLoading = true;
 
   @override
   void initState() {
     super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    _bikeProfile = await StorageService.getBikeProfile();
     _loadMockData();
+
+    setState(() {
+      _isLoading = false;
+    });
   }
 
   void _loadMockData() {
-    // Generate some mock alerts for demo
     _alerts = MockDataService.generateHistoricalAlerts(10);
     _healthStatus = HealthStatus.fromAlerts(_alerts);
-    setState(() {});
   }
 
   void _refreshData() {
@@ -47,17 +63,70 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  Future<void> _logout() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Switch Bike'),
+        content: const Text('Are you sure you want to switch to a different bike? Your current data will be cleared.'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Cancel'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            style: TextButton.styleFrom(
+              foregroundColor: AppColors.error,
+            ),
+            child: const Text('Switch Bike'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true && mounted) {
+      await StorageService.clearAllData();
+      Navigator.of(context).pushNamedAndRemoveUntil('/welcome', (route) => false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    if (_isLoading) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppStrings.dashboard),
+        title: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(AppStrings.dashboard),
+            if (_bikeProfile != null)
+              Text(
+                _bikeProfile!.model,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Colors.white.withOpacity(0.9),
+                  fontWeight: FontWeight.normal,
+                ),
+              ),
+          ],
+        ),
         actions: [
-          // Demo: Manual refresh button
           IconButton(
             icon: const Icon(Icons.refresh),
             onPressed: _refreshData,
             tooltip: 'Generate Alert (Demo)',
+          ),
+          IconButton(
+            icon: const Icon(Icons.swap_horiz),
+            onPressed: _logout,
+            tooltip: 'Switch Bike',
           ),
         ],
       ),
@@ -68,6 +137,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
           setState(() {
             _currentIndex = index;
           });
+          
+          // Reload data when returning to dashboard
+          if (index == 0) {
+            _loadData();
+          }
         },
         type: BottomNavigationBarType.fixed,
         items: const [
@@ -84,8 +158,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             label: 'History',
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.build),
-            label: 'Service',
+            icon: Icon(Icons.settings),
+            label: 'Settings',
           ),
         ],
       ),
@@ -101,7 +175,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       case 2:
         return _buildHistoryTab();
       case 3:
-        return _buildServiceTab();
+        return const SettingsScreen();
       default:
         return _buildDashboard();
     }
@@ -118,6 +192,46 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            // Bike Info Card
+            if (_bikeProfile != null) ...[
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    children: [
+                      const Icon(
+                        Icons.motorcycle,
+                        size: 40,
+                        color: AppColors.primary,
+                      ),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              _bikeProfile!.model,
+                              style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              'Year: ${_bikeProfile!.yearOfPurchase} • ${_bikeProfile!.currentOdometer.toStringAsFixed(0)} km',
+                              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                color: AppColors.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 16),
+            ],
+            
             // Health Status Card
             HealthStatusCard(healthStatus: _healthStatus),
             const SizedBox(height: 16),
@@ -128,7 +242,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               todayAlerts: _alerts.where((a) => 
                 DateTime.now().difference(a.timestamp).inHours < 24
               ).length,
-              daysSinceService: 45,
+              daysSinceService: _bikeProfile?.daysSinceLastService() ?? 0,
             ),
             const SizedBox(height: 24),
             
@@ -211,33 +325,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         );
       },
-    );
-  }
-
-  Widget _buildServiceTab() {
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          const Icon(
-            Icons.build_circle,
-            size: 80,
-            color: AppColors.textLight,
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'Service Log',
-            style: Theme.of(context).textTheme.headlineMedium,
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Coming soon!',
-            style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-              color: AppColors.textSecondary,
-            ),
-          ),
-        ],
-      ),
     );
   }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:ride_guard/core/constants/app_colors.dart';
 import 'package:ride_guard/core/constants/app_strings.dart';
+import 'package:ride_guard/data/services/storage_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -28,12 +29,26 @@ class _SplashScreenState extends State<SplashScreen> with SingleTickerProviderSt
     
     _controller.forward();
     
-    // Navigate to welcome screen after 2.5 seconds
-    Future.delayed(const Duration(milliseconds: 2500), () {
-      if (mounted) {
-        Navigator.of(context).pushReplacementNamed('/welcome');
-      }
-    });
+    // Check onboarding status and navigate accordingly
+    _checkOnboardingStatus();
+  }
+
+  Future<void> _checkOnboardingStatus() async {
+    // Wait for animation to complete
+    await Future.delayed(const Duration(milliseconds: 2500));
+    
+    if (!mounted) return;
+    
+    // Check if user has completed onboarding
+    final isOnboarded = await StorageService.isOnboarded();
+    
+    if (isOnboarded) {
+      // User has already set up bike, go to dashboard
+      Navigator.of(context).pushReplacementNamed('/dashboard');
+    } else {
+      // New user, show welcome screen
+      Navigator.of(context).pushReplacementNamed('/welcome');
+    }
   }
 
   @override
