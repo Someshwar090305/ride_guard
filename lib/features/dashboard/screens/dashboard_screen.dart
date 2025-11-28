@@ -10,6 +10,7 @@ import 'package:ride_guard/features/settings/screens/settings_screen.dart';
 import '../widgets/health_status_card.dart';
 import '../widgets/quick_stats_card.dart';
 import '../widgets/recent_alerts_widget.dart';
+import 'package:ride_guard/features/alerts/screens/alert_detail_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -322,6 +323,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 color: AppColors.primary,
               ),
             ),
+            onTap: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => AlertDetailScreen(alert: alert),
+                ),
+              );
+            },
           ),
         );
       },

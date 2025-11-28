@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:ride_guard/core/constants/app_colors.dart';
-import 'package:ride_guard/data/models/anomaly_alert.dart';
+import '../../../core/constants/app_colors.dart';
+import '../../../data/models/anomaly_alert.dart';
+import 'package:ride_guard/features/alerts/screens/alert_detail_screen.dart';
 
 class RecentAlertsWidget extends StatelessWidget {
   final List<AnomalyAlert> alerts;
@@ -64,7 +65,12 @@ class RecentAlertsWidget extends StatelessWidget {
       child: InkWell(
         borderRadius: BorderRadius.circular(12),
         onTap: () {
-          // Navigate to detail screen (to be implemented)
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => AlertDetailScreen(alert: alert),
+            ),
+          );
         },
         child: Padding(
           padding: const EdgeInsets.all(16.0),
